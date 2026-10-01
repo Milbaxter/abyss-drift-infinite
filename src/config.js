@@ -22,6 +22,9 @@ export const CONFIG = {
     growthSizeExp: 0.18,          // growth per meal slows as you get bigger
     metabolism: 0.0035,           // fraction of mass lost per second (idling shrinks you slowly; never below startMass)
     reach: 0.55,        // contact if dist < eater.size + eaten.size * reach
+    // Dangerous fish hitbox: ellipse along the heading, semi-axes size*hitA (length) × size*hitB (height).
+    // fishRenderer draws exactly this as the red ring; the player dies when its core (size*reach) touches it.
+    hitA: 1.0, hitB: 0.3,
   },
   camera: { fov: 50, baseDist: 34, perSize: 9 },
   population: {

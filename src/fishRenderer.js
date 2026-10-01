@@ -456,37 +456,29 @@ function buildGrouper() {
   });
 }
 
-// ENEMY: every dangerous (non-boss) fish is drawn with this one model so threats read instantly. Deep, round,
-// piranha-like body that fills its hitbox circle (radius = entity.size; see the hitbox ring below): dark back,
-// pale belly, underbite with white fangs, glaring eye. Colour is fixed (not species-tinted).
+// ENEMY: every dangerous (non-boss) fish is drawn with this one model so threats read instantly: a long,
+// barracuda-like hunter (dark back, pale belly, fang row, yellow eye) that fills its hitbox ellipse
+// (CONFIG.eat.hitA × hitB around the centre, see the hitbox ring below). Colour is fixed (not species-tinted).
 function buildEnemy() {
-  const h = prof(0.74, 0.5, 0.6, 0.12), w = prof(0.42, 0.5, 0.6, 0.08);
+  const h = prof(0.23, 0.9, 0.5, 0.05), w = prof(0.15, 0.9, 0.5, 0.035);
   return fishModel({
-    x0: 0.82, x1: -0.55, n: 40, m: 24, w, h,
+    x0: 1, x1: -0.72, n: 48, m: 18, w, h,
     bodyPaint: (x, y, z, u, v, o) => {
-      baseShade(o, v, 0.55, 1.1);
+      baseShade(o, v, 0.6, 1.05);
       const ca = Math.cos(v * TAU);
-      if (ca < -0.15) mixc(o, 0.95, 0.88, 0.8, 0, 0.75 * sstep(-0.15, -0.6, ca));   // pale belly
-      const k = 0.85 + 0.3 * noise3(x * 7, y * 7 + 3, z * 7); o.r *= k; o.g *= k; o.b *= k;
-      if (u < 0.04) set(o, 0.12, 0.03, 0.04, 0);
+      if (ca < -0.1) mixc(o, 0.92, 0.9, 0.86, 0, 0.7 * sstep(-0.1, -0.55, ca));                 // pale belly
+      if (u > 0.2 && u < 0.85 && ca > -0.1 && fract(u * 9 - ca * 0.2) < 0.22) mixc(o, 0.1, 0.12, 0.16, 0, 0.6); // bars
+      if (u < 0.09 && Math.abs(ca + 0.15) < 0.12) set(o, 0.12, 0.04, 0.05, 0);                 // jaw line
     },
-    eye: { u: 0.17, r: 0.1, ang: 0.75, iris: [1.0, 0.82, 0.1], irisGlow: 0.35, slit: true, fwd: 0.6, up: -0.15 },
-    tail: { type: 'fork', fork: 0.45, L: 0.34, spread: 0.36, root: 0.1, paint: finPaint({ c: [0.55, 0.55, 0.6], flut: 0.6 }) },
-    pecs: { u: 0.3, span: 0.1, len: 0.22, back: 0.8, droop: 0.35, paint: finPaint({ c: [0.6, 0.6, 0.65], flut: 1.0 }) },
-    dorsal: { u0: 0.3, u1: 0.62, hgt: 0.2, sweep: 0.55, paint: finPaint({ c: [0.45, 0.45, 0.5], flut: 0.3 }) },
-    anal: { u0: 0.55, u1: 0.72, hgt: 0.16, sweep: 0.5, paint: finPaint({ c: [0.5, 0.5, 0.55], flut: 0.3 }) },
+    eye: { u: 0.13, r: 0.075, ang: 0.95, iris: [1.0, 0.82, 0.1], irisGlow: 0.3, pupil: 0.62 },
+    tail: { type: 'fork', L: 0.36, spread: 0.3, fork: 0.55, root: 0.05, paint: finPaint({ c: [0.5, 0.52, 0.58], flut: 0.6 }) },
+    pecs: { u: 0.2, span: 0.06, len: 0.17, back: 1.2, droop: 0.3, paint: finPaint({ c: [0.7, 0.7, 0.72], flut: 0.9 }) },
+    dorsal: [{ u0: 0.3, u1: 0.44, hgt: 0.13, sweep: 0.5 }, { u0: 0.66, u1: 0.75, hgt: 0.09, sweep: 0.6 }],
+    anal: { u0: 0.66, u1: 0.75, hgt: 0.08, sweep: 0.6 },
     extra: ({ xAt, w: W, h: H, add }) => {
-      // underbite jaw + fangs
-      const jaw = new THREE.SphereGeometry(0.2, 14, 10).scale(1.15, 0.55, 0.9).translate(0.72, -0.2, 0);
-      add(jaw, (x, y, z, uu, vv, o) => set(o, 0.85, 0.8, 0.75, 0.3));
-      for (let k = 0; k < 7; k++) {
-        const a = lerp(-1.1, 1.1, k / 6), px = 0.72 + 0.17 * Math.cos(a) * 0.9, pz = 0.17 * Math.sin(a);
-        const len = k % 2 ? 0.1 : 0.14;
-        add(aim(cone(0.028, len), V(0.25, 1, 0), V(px, -0.13, pz)), (x, y, z, uu, vv, o) => { set(o, 1, 1, 0.95, 0); o.emis = 0.3; });
-      }
-      for (let k = 0; k < 5; k++) {
-        const a = lerp(-0.9, 0.9, k / 4), px = 0.66 + 0.15 * Math.cos(a), pz = 0.15 * Math.sin(a);
-        add(aim(cone(0.024, 0.08), V(0.25, -1, 0), V(px, -0.05, pz)), (x, y, z, uu, vv, o) => { set(o, 1, 1, 0.95, 0); o.emis = 0.3; });
+      for (const side of [-1, 1]) for (let i = 0; i < 6; i++) {
+        const u = 0.02 + i * 0.018, px = xAt(u), pz = side * W(u) * 0.8, py = -H(u) * 0.2;
+        add(aim(cone(0.013, 0.07, 3), V(0.35, 1, 0), V(px, py, pz)), (x, y, z, uu, vv, o) => { set(o, 1, 1, 0.95, 0); o.emis = 0.3; });
       }
     },
   });
@@ -1106,7 +1098,7 @@ const TUNE = {
   shark:     { half: 1.3,  hz: 1.15, amp: 0.11, cap: 64, rough: 0.5 },
   whale:     { half: 1.35, hz: 0.45, amp: 0.08, cap: 24, rough: 0.6, zA: 0.25, yA: 1.0, tr: 0 },
   hero:      { half: 1.45, hz: 2.3, amp: 0.13, cap: 1,  rough: 0.3 },
-  enemy:     { half: 0.92, hz: 2.2, amp: 0.1,  cap: 384, rough: 0.45 },
+  enemy:     { half: 1.0,  hz: 1.8, amp: 0.11, cap: 384, rough: 0.35, metal: 0.2 },
   microbe:   { half: 1.0,  hz: 2.8, amp: 0.12, cap: 160, rough: 0.2, mode: 7, transl: true },
   lanternfish:{ half: 1.1, hz: 2.8, amp: 0.12, cap: 192, rough: 0.35 },
   squid:     { half: 1.15, hz: 1.2, amp: 0.1,  cap: 64,  rough: 0.35, mode: 8 },
@@ -1489,8 +1481,8 @@ export function createFishRenderer({ scene }) {
       glow: tune.glow ?? sp.glow ?? 0, upright: !!tune.upright, jelly: mode === 1 };
     buckets.push(b); byKey[key] = b;
   }
-  // HITBOX RING: every dangerous (non-boss) fish gets a red circle at its exact kill radius (entity.size; the
-  // ecosystem eats the player when the player's core touches it, from any direction) + a faint red fill.
+  // HITBOX RING: every dangerous (non-boss) fish gets a red ellipse at its exact hitbox (CONFIG.eat.hitA/hitB ×
+  // size, along the heading; the ecosystem eats the player when the player's core touches it) + a faint red fill.
   // Constant ~5 px line via fwidth; drawn on top of the fish (no depth test).
   const HIT_EXT = 1.15, HIT_CAP = 384;
   const hitMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(2 * HIT_EXT, 2 * HIT_EXT), new THREE.ShaderMaterial({
@@ -1513,7 +1505,7 @@ export function createFishRenderer({ scene }) {
   hitMesh.frustumCulled = false; hitMesh.count = 0; hitMesh.renderOrder = 10; hitMesh.name = 'hitbox-rings';
   group.add(hitMesh);
   const ENEMY_COLOR = new THREE.Color(0x46505e);
-  const qId = new THREE.Quaternion();
+  const qId = new THREE.Quaternion(), Z_AXIS = new THREE.Vector3(0, 0, 1);
 
   const FORM_T = 0.5;
   // Pure greens / reds are reserved for the edible / danger code: shift them (cached per entity).
@@ -1570,7 +1562,8 @@ export function createFishRenderer({ scene }) {
       } else if (show && !f.isBoss && f.size > ps * margin) {
         b = byKey.enemy;                       // every threat looks the same: one enemy model + hitbox ring
         if (nHit < HIT_CAP) {
-          scl.set(f.size, f.size, f.size);
+          scl.set(f.size * CONFIG.eat.hitA, f.size * CONFIG.eat.hitB, 1);
+          qId.setFromAxisAngle(Z_AXIS, f.heading);
           mat4.compose(f.pos, qId, scl);
           mat4.toArray(hitMesh.instanceMatrix.array, nHit++ * 16);
         }

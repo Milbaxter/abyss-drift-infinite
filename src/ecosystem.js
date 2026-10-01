@@ -9,7 +9,7 @@
 //   CROSSER — line passing 0.2–0.8·viewRadius from the player's (led) path, any direction.
 //   DARTER  — spawns off-screen aimed at the player's position AT SPAWN, 0.75–0.9× player speed, shoots past.
 //   Jellies and puffers (any size) are slow straight-line movers too. No statics, no lunges, no homing.
-//   NPCs NEVER eat each other: the only eats are player→NPC and NPC/boss→player (touching the enemy's hitbox circle, radius = size).
+//   NPCs NEVER eat each other: the only eats are player→NPC and NPC/boss→player (touching the enemy's hitbox ellipse, CONFIG.eat.hitA/hitB).
 // Fairness: spawns are placed outside the actual screen rectangle (half-width = viewRadius, half-height =
 //   viewRadius/aspect); a darter's speed/angle is chosen so that — unless the player swims straight at it — it needs
 //   ≥ T.reactTime seconds from appearing on screen to reaching the player. Dash/line speeds ≤ fairSpeed·playerSpeed.
@@ -409,9 +409,11 @@ export function createEcosystem({ scene, bus, terrain }) {
           f.alive = false;
           continue;
         }
-        if (playerPrey && dangerToPlayer && player.alive) {               // touching the hitbox circle eats the player
-          // Full circle of radius f.size (drawn as the red hitbox ring by fishRenderer), any direction.
-          if (pd < f.size + player.size * reach) { bus.emit('eat', { eater: f, eaten: player }); f.gulp = 1; }
+        if (playerPrey && dangerToPlayer && player.alive) {               // touching the hitbox ellipse eats the player
+          // Ellipse along the heading (CONFIG.eat.hitA/hitB × size), grown by the player's core; drawn as the red ring.
+          const pr = player.size * reach, A = f.size * CONFIG.eat.hitA + pr, B = f.size * CONFIG.eat.hitB + pr;
+          const lx = cosH * pdx + sinH * pdy, ly = cosH * pdy - sinH * pdx;
+          if (lx * lx / (A * A) + ly * ly / (B * B) < 1) { bus.emit('eat', { eater: f, eaten: player }); f.gulp = 1; }
         }
         if (mode === M_FREE && pSurf < sight && canEat(player, f)) {
           const w = 1 - clamp(pSurf / sight, 0, 1);
