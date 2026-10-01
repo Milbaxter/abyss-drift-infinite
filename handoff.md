@@ -20,6 +20,14 @@ It's a side-view, endless sea game of eat or be eaten:
 - The game is readable: green outline = edible, red = danger.
 - It's fair: nothing hits you within about 2 s of appearing.
 
+## 1b. Update 2026-10-01 (later session)
+- User asked for 4x normal enemies: ecosystem `T.densityMin/Max` 5–8 -> 20–32, `crossCd` /4, `darterEvery` /4.
+  Headless sim (bot): ~20 danger fish nearby (was ~6), ~110 darters / 4 min; growth is slower (bot dodges more).
+- Every dangerous non-boss fish now renders with ONE enemy model (`buildEnemy`, round piranha, fixed slate colour)
+  plus a bold red HITBOX RING + faint fill at radius = entity.size (`hitMesh` in fishRenderer.sync).
+- Enemy kill check is now a full circle (`pd < f.size + player.size*reach`), any direction — the ring is exact.
+- Deployed to prod and checked on the live URL (no console errors). Untested by a human: difficulty with 4x enemies.
+
 ## 2. Status
 - **Repo:** https://github.com/Milbaxter/abyss-drift-infinite. Working tree is clean at `59820a7`.
 - **Live:** https://abyss-drift-infinite.vercel.app (Vercel project `abyss-drift-infinite`, account milbaxter). The latest deploy shows Ready.
