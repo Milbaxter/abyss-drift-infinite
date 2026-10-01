@@ -1491,7 +1491,7 @@ export function createFishRenderer({ scene }) {
   }
   // HITBOX RING: every dangerous (non-boss) fish gets a red circle at its exact kill radius (entity.size; the
   // ecosystem eats the player when the player's core touches it, from any direction) + a faint red fill.
-  // Constant ~2.5 px line via fwidth; drawn on top of the fish (no depth test).
+  // Constant ~5 px line via fwidth; drawn on top of the fish (no depth test).
   const HIT_EXT = 1.15, HIT_CAP = 384;
   const hitMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(2 * HIT_EXT, 2 * HIT_EXT), new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, depthTest: false,
@@ -1502,11 +1502,11 @@ export function createFishRenderer({ scene }) {
       varying vec2 vP;
       void main() {
         float r = length(vP), fw = max(fwidth(r), 1e-4);
-        float ring = 1.0 - smoothstep(1.0, 2.2, abs(r - 1.0 + fw) / fw);
-        float fill = 0.12 * (1.0 - smoothstep(1.0 - fw, 1.0, r));
-        float a = max(ring * 0.95, fill);
+        float ring = 1.0 - smoothstep(2.0, 3.2, abs(r - 1.0 + 2.0 * fw) / fw);
+        float fill = 0.2 * (1.0 - smoothstep(1.0 - fw, 1.0, r));
+        float a = max(ring, fill);
         if (a < 0.004) discard;
-        gl_FragColor = vec4(1.0, 0.16, 0.14, a);
+        gl_FragColor = vec4(1.0, 0.08, 0.06, a);
       }`,
   }), HIT_CAP);
   hitMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
