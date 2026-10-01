@@ -85,7 +85,7 @@ export const SPECIES = {
   jelly:     { shape: 'jelly',  behavior: 'drifter',  sizeMin: 0.4,  sizeMax: 8.0,  speedMul: 0.25, turnMul: 0.6,
                colors: [0xff9be8, 0xa6c8ff, 0xc9a6ff], glow: 0.8, biomes: {}, tiers: { 0: 1, 1: 2, 2: 2, 3: 2, 5: 1 } },
   angler:    { shape: 'angler', behavior: 'ambush',   sizeMin: 0.8,  sizeMax: 9.0,  speedMul: 0.9, turnMul: 0.9,
-               colors: [0x3b2f4a, 0x2a2238], glow: 1.0, biomes: {}, tiers: { 0: 1.5, 1: 2.5, 2: 2 } },
+               colors: [0x3b2f4a, 0x2a2238], glow: 1.0, biomes: {}, tiers: { /* removed: anglers were static 'sitting ducks' */ } },
   squid:     { shape: 'squid',  behavior: 'predator', sizeMin: 1.5,  sizeMax: 12,   speedMul: 1.2, turnMul: 0.9,
                colors: [0xc0475a, 0xe0707a, 0x8a3fa0], glow: 0.5, biomes: {}, tiers: { 2: 2, 3: 3, 4: 1 } },
   sardine:   { shape: 'slim',   behavior: 'school',   sizeMin: 0.5,  sizeMax: 3.5,  speedMul: 1.1, turnMul: 1.3,
