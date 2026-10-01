@@ -9,12 +9,12 @@
 //   CROSSER — line passing 0.2–0.8·viewRadius from the player's (led) path, any direction.
 //   DARTER  — spawns off-screen aimed at the player's position AT SPAWN, 0.75–0.9× player speed, shoots past.
 //   Jellies and puffers (any size) are slow straight-line movers too. No statics, no lunges, no homing.
-//   NPCs NEVER eat each other: the only eats are player→NPC and NPC/boss→player (mouth contact).
+//   NPCs NEVER eat each other: the only eats are player→NPC and NPC/boss→player (touching the enemy's hitbox circle, radius = size).
 // Fairness: spawns are placed outside the actual screen rectangle (half-width = viewRadius, half-height =
 //   viewRadius/aspect); a darter's speed/angle is chosen so that — unless the player swims straight at it — it needs
 //   ≥ T.reactTime seconds from appearing on screen to reaching the player. Dash/line speeds ≤ fairSpeed·playerSpeed.
-// Director: danger density 5–8 (crossers + darters) within 1.5·vr, ramping with tier and with time since the last
-//   breather (shmup stage); darters every ~3–5 s (faster at higher tiers). Breathers (4 s) only on evolve / wave end /
+// Director: danger density 20–32 (crossers + darters) within 1.5·vr, ramping with tier and with time since the last
+//   breather (shmup stage); darters every ~0.75–1.25 s (faster at higher tiers). Breathers (4 s) only on evolve / wave end /
 //   boss defeated. Mild easing after ≥2 near misses in 10 s (−30% for 6 s). No director spawns during boss fights,
 //   formation waves (pauseCrossers) or the first 10 s. ~8 meaningful prey (≥ 0.3·P) kept nearby, ahead.
 // Exposed: fish, threat, intensity, phase ('flow'|'breather'), danger, food, darters (count spawned), nearMisses,
@@ -35,7 +35,6 @@ const T = {
   schoolSize: [8, 22], schoolWeight: 0.4, schoolShareMax: 0.45,
   slowLiners: { jelly: true, puffer: true },   // always straight-line movers (slow)
   slowLinerSpeed: 0.6,                          // × their npcSpeed
-  frontDot: -0.2, giantMouthDot: 0.45,
   fairSpeed: 0.9, fairLungeSpeed: 1.4, fairTurn: 0.75,
   rockNear: 30, wallClear: 1.6, wallWeight: 8,
   aspect: 16 / 9,           // fallback when window size is unknown (headless)
@@ -43,10 +42,10 @@ const T = {
   // director
   safeStart: 10,
   dangerRadius: 1.5, dangerIncoming: 2.2,
-  densityMin: 5, densityMax: 8,                 // dangerous movers within dangerRadius (crossers + darters)
+  densityMin: 20, densityMax: 32,                // dangerous movers within dangerRadius (crossers + darters)
   rampTier: 0.35, rampTime: 90,                 // ramp = tierShare·tier/6 + timeSinceBreather/rampTime
-  crossCd: [0.6, 1.4], crossDist: [1.3, 1.7], crossOffset: [0.2, 0.8], crossLead: [0.4, 1.6],
-  darterEvery: [3, 5], darterTierK: 0.12,       // interval / (1 + K·tier) / (0.8 + 0.4·ramp)
+  crossCd: [0.15, 0.35], crossDist: [1.3, 1.7], crossOffset: [0.2, 0.8], crossLead: [0.4, 1.6],
+  darterEvery: [0.75, 1.25], darterTierK: 0.12,       // interval / (1 + K·tier) / (0.8 + 0.4·ramp)
   darterDist: [1.2, 1.4], darterSpeed: [0.75, 0.95], darterSize: [1.3, 2.0],
   darterNoHeadOn: 0.55,     // don't spawn darters within ±this rad of the player's heading
   darterOverflow: 2,        // darters pause while danger ≥ target + this
@@ -410,11 +409,9 @@ export function createEcosystem({ scene, bus, terrain }) {
           f.alive = false;
           continue;
         }
-        if (playerPrey && dangerToPlayer && player.alive) {               // mouth contact eats the player
-          const ok = beh === 'giant'
-            ? pFwd > T.giantMouthDot && pd < f.size * 1.3 + player.size * reach
-            : pFwd > T.frontDot && pd < f.size + player.size * reach;
-          if (ok) { bus.emit('eat', { eater: f, eaten: player }); f.gulp = 1; }
+        if (playerPrey && dangerToPlayer && player.alive) {               // touching the hitbox circle eats the player
+          // Full circle of radius f.size (drawn as the red hitbox ring by fishRenderer), any direction.
+          if (pd < f.size + player.size * reach) { bus.emit('eat', { eater: f, eaten: player }); f.gulp = 1; }
         }
         if (mode === M_FREE && pSurf < sight && canEat(player, f)) {
           const w = 1 - clamp(pSurf / sight, 0, 1);
