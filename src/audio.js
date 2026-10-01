@@ -65,6 +65,8 @@ export function createAudio({ bus }) {
   let melodyIdx = 2;
   const lastPlayed = {};
   let wasPaused = false;
+  const wave = { active: false, nextStep: 0, step: 0, root: 40 };
+  let waveBus;
   const boss = { active: false, strings: [], stringNodes: null, nextStep: 0, step: 0, root: 40 };
 
   // ---------------- setup ----------------
@@ -88,6 +90,7 @@ export function createAudio({ bus }) {
     ambBus = ctx.createGain(); ambBus.connect(duckGain);
     musicBus = ctx.createGain(); musicBus.gain.value = 0; musicBus.connect(duckGain);
     bossBus = ctx.createGain(); bossBus.gain.value = 0; bossBus.connect(duckGain);
+    waveBus = ctx.createGain(); waveBus.gain.value = 0; waveBus.connect(duckGain);
     sfxBus = ctx.createGain(); sfxBus.connect(master);
 
     // reverb: procedural IR. revIn gain = per-biome wetness (caverns very wet)
@@ -514,6 +517,73 @@ export function createAudio({ bus }) {
     }
   }
 
+  // ---------------- formation waves ----------------
+  // Warning ~1.8s ahead: 3 accelerating, rising sonar pings + a low swell.
+  function onWaveWarn({ time } = {}) {
+    init();
+    if (!ctx || !limit('waveWarn', 0.8)) return;
+    const t = ctx.currentTime + 0.02;
+    const lead = clamp(fin(time, 1.8), 0.8, 4);
+    const base = keyBase() + 24;
+    const offs = [0, 0.48, 0.8].map((x) => x * lead / 1.8);
+    [0, 5, 12].forEach((iv, i) => {
+      const f = midi(base + iv);
+      tone({ t: t + offs[i], f, a: 0.003, d: 0.55, vol: 0.075 + 0.015 * i, rev: 0.8, echo: 0.5, prio: 2 });
+      tone({ t: t + offs[i], f: f * 2.003, a: 0.003, d: 0.22, vol: 0.022, rev: 0.6, prio: 2 });
+    });
+    noise({ t, dur: lead + 0.3, vol: 0.09, type: 'lowpass', f: 80, f2: 500, f3: 160, q: 3, rev: 0.6, prio: 2,
+      curve: new Float32Array([0.0001, 0.15, 0.35, 0.6, 0.85, 1, 0.0001]) });
+    tone({ t, type: 'triangle', f: midi(ROOTS[dom] - 12), f2: midi(ROOTS[dom] - 5), glide: lead, a: lead * 0.8, d: 0.4, vol: 0.06, lp: 300, prio: 2 });
+  }
+
+  function onWaveStart() {
+    init();
+    if (!ctx) return;
+    const n = ctx.currentTime;
+    if (!wave.active) { wave.step = 0; wave.nextStep = n + 0.05; }
+    wave.active = true;
+    wave.root = ROOTS[dom] - (ROOTS[dom] > 45 ? 12 : 0);
+    waveBus.gain.cancelScheduledValues(n);
+    waveBus.gain.setTargetAtTime(1, n, 0.25);
+  }
+
+  function waveFadeOut(tc = 0.5) {
+    wave.active = false;
+    if (!ctx) return;
+    const n = ctx.currentTime;
+    waveBus.gain.cancelScheduledValues(n);
+    waveBus.gain.setTargetAtTime(0, n, tc);
+  }
+
+  function onWaveEnd({ cleared } = {}) {
+    waveFadeOut(0.4);
+    if (!ctx || !cleared || !limit('waveClear', 0.5)) return;
+    const t = ctx.currentTime + 0.03;
+    noise({ t, dur: 0.5, a: 0.06, vol: 0.13, f: 400, f2: 4500, f3: 1500, q: 1.4, rev: 0.4, prio: 2 });
+    const base = keyBase() + 12;
+    [0, 2, 4, 5, 7].forEach((dg, i) => bell(t + 0.04 + i * 0.055, midi(scaleNote(dg, base)), 0.075 + i * 0.006, (i - 2) * 0.2, 0.7, 1.0, 2));
+    bell(t + 0.34, midi(scaleNote(10, base)), 0.06, 0, 0.9, 1.6, 2);
+  }
+
+  // Light driving pulse (8ths @ ~118bpm): kick-toms + rhythmic bass. Ducked under the boss layer.
+  const WSTEP = 0.254;
+  const WBASS = [1, 0, 1, 1, 0, 1, 1, 0];
+  function waveSequencer(n) {
+    if (!wave.active) return;
+    if (wave.nextStep < n) wave.nextStep = n + 0.02;
+    const lv = boss.active ? 0.4 : 1;
+    while (wave.nextStep < n + 0.15) {
+      const t = wave.nextStep, st = wave.step % 8, bar = Math.floor(wave.step / 8);
+      const r = wave.root + (bar % 4 === 3 ? 5 : 0);
+      if (st === 0 || st === 4) tone({ t, f: 70, f2: 38, glide: 0.12, a: 0.003, d: 0.2, vol: 0.28 * lv, lp: 300, dest: waveBus, prio: 1 });
+      if (st === 6 || (bar % 2 === 1 && st === 7)) tone({ t, f: 120, f2: 70, glide: 0.12, a: 0.003, d: 0.18, vol: 0.13 * lv, lp: 700, dest: waveBus, prio: 1 });
+      if (st === 2 || st === 6) noise({ t, dur: 0.05, a: 0.002, vol: 0.035 * lv, type: 'bandpass', f: 2500, q: 1.5, dest: waveBus });
+      if (WBASS[st]) tone({ t, type: 'sawtooth', f: midi(r - 12 + (st === 5 ? 12 : 0)), a: 0.004, d: 0.16, vol: 0.06 * lv, lp: 380, dest: waveBus, prio: 1 });
+      wave.step++;
+      wave.nextStep += WSTEP;
+    }
+  }
+
   // ---------------- SFX ----------------
   // ---- BITE: jaw snap + click, bone crackle (bigger meals), wet squelch/gulp, low body ----
   // heft 0..1 = meal size relative to eater; df = pitch factor (bigger eater = lower); mf = muffle cutoff.
@@ -776,6 +846,7 @@ export function createAudio({ bus }) {
     tone({ t: t + 0.25, type: 'sawtooth', f: 220, f2: 40, glide: 1.8, a: 0.05, d: 2.0, vol: 0.06, lp: 450, rev: 0.8, prio: 3 });
     for (let i = 0; i < 4; i++) bubble(t + 0.35 + i * 0.09, rand(250, 600), 0.03, rand(-0.6, 0.6));
     if (boss.active) bossFadeOut(0.5);
+    if (wave.active) waveFadeOut(0.3);
     duckGain.gain.cancelScheduledValues(t);
     duckGain.gain.setTargetAtTime(0.22, t, 0.05);
     duckGain.gain.setTargetAtTime(1, t + 2.2, 1.0);
@@ -872,7 +943,7 @@ export function createAudio({ bus }) {
     if (e.code === 'KeyM' && !e.repeat && !(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))) setMuted(!muted);
   }, true);
   bus.on('start', init);
-  bus.on('restart', () => { init(); if (boss.active) bossFadeOut(0.3); });
+  bus.on('restart', () => { init(); if (boss.active) bossFadeOut(0.3); if (wave.active) waveFadeOut(0.3); });
   bus.on('toggleMute', () => setMuted(!muted));
   bus.on('playerAte', onPlayerAte);
   bus.on('eat', onEat);
@@ -889,6 +960,9 @@ export function createAudio({ bus }) {
   bus.on('bossHit', onBossHit);
   bus.on('bossDefeated', onBossDefeated);
   bus.on('ink', onInk);
+  bus.on('waveWarn', onWaveWarn);
+  bus.on('waveStart', onWaveStart);
+  bus.on('waveEnd', onWaveEnd);
 
   bus.emit('muteChanged', { muted });
   setTimeout(() => bus.emit('muteChanged', { muted }), 0);
@@ -952,6 +1026,7 @@ export function createAudio({ bus }) {
     if (state.paused) return;
 
     bossSequencer(now);
+    waveSequencer(now);
 
     // whale calls: frequent in Open Ocean / dark regions, a bit more as you grow
     if (now >= nextWhale) {

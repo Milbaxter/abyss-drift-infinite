@@ -290,6 +290,39 @@ const CSS = `
 .ad-defeat.on .burst{animation:adBurst 1.1s ease-out}
 @keyframes adBurst{from{transform:scale(.2);opacity:1}to{transform:scale(5);opacity:0}}
 
+/* formation waves */
+.ad-wchev{position:absolute;left:0;top:0;width:46px;height:40px;margin:-20px 0 0 -23px;opacity:0;transition:opacity .35s;will-change:transform,opacity}
+.ad-wchev.on{opacity:1}
+.ad-wchev .in{position:absolute;inset:0;animation:adWPulse var(--wp,.6s) ease-in-out infinite alternate}
+.ad-wchev i{position:absolute;top:0;width:24px;height:40px;background:linear-gradient(90deg,#ff9a3c,#ff2d55);
+  clip-path:polygon(0 0,45% 0,100% 50%,45% 100%,0 100%,55% 50%);filter:drop-shadow(0 0 8px rgba(255,90,40,.95))}
+.ad-wchev i:first-child{left:0;opacity:.6}.ad-wchev i:last-child{left:20px}
+@keyframes adWPulse{from{transform:translateX(-5px) scale(.92);opacity:.65}to{transform:translateX(3px) scale(1.08);opacity:1}}
+.ad-wchev .cd{position:absolute;left:50%;top:100%;margin-top:4px;width:40px;height:4px;transform:translateX(-50%);border-radius:2px;background:rgba(0,0,0,.45);overflow:hidden}
+.ad-wchev .cd b{position:absolute;inset:0;background:#ffb03c;transform-origin:0 50%;box-shadow:0 0 6px #ff9a3c}
+.ad-wwarn{position:absolute;left:50%;top:18px;transform:translate(-50%,-12px);opacity:0;padding:8px 18px 10px;border-radius:14px;text-align:center;white-space:nowrap;
+  background:linear-gradient(180deg,rgba(150,30,10,.62),rgba(90,10,20,.55));border:1px solid rgba(255,140,80,.6);box-shadow:0 0 26px rgba(255,90,40,.45);
+  font-weight:700;font-size:17px;letter-spacing:.06em;color:#ffe6cf;transition:opacity .3s,transform .4s cubic-bezier(.2,.8,.2,1);z-index:4}
+.ad-wwarn.on{opacity:1;transform:translate(-50%,0);animation:adWShake .5s ease-in-out infinite}
+@keyframes adWShake{0%,100%{margin-left:0}25%{margin-left:-2px}75%{margin-left:2px}}
+.ad-wwarn .bar{height:3px;margin-top:6px;border-radius:2px;background:rgba(0,0,0,.4);overflow:hidden}
+.ad-wwarn .bar b{display:block;height:100%;background:linear-gradient(90deg,#ffd66b,#ff7b1c);transform-origin:0 50%}
+.ad-dodge{position:absolute;left:50%;top:22px;transform:translate(-50%,0) scale(.7);opacity:0;font-weight:700;font-size:clamp(26px,4.5vw,38px);letter-spacing:.2em;
+  color:#fff1d6;text-shadow:0 0 16px #ff7b1c,0 0 30px rgba(255,80,40,.8),0 3px 0 rgba(90,20,0,.7);pointer-events:none;z-index:4}
+.ad-dodge.on{animation:adDodge 1.1s ease-out forwards}
+@keyframes adDodge{0%{opacity:0;transform:translate(-50%,0) scale(.6)}15%{opacity:1;transform:translate(-50%,0) scale(1.12)}30%{transform:translate(-50%,0) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(-50%,-10px) scale(1)}}
+.ad-wavecard{position:absolute;left:50%;top:34%;transform:translate(-50%,-50%) scale(.5);opacity:0;text-align:center;pointer-events:none;z-index:3;white-space:nowrap}
+.ad-wavecard.on{opacity:1;transform:translate(-50%,-50%) scale(1);transition:opacity .25s,transform .6s cubic-bezier(.25,1.7,.45,1)}
+.ad-wavecard.out{opacity:0;transform:translate(-50%,-60%) scale(1.04);transition:opacity .7s,transform .7s}
+.ad-wavecard .eyebrow{font-size:12px;letter-spacing:.4em;text-transform:uppercase;color:var(--dim)}
+.ad-wavecard .big{font-weight:700;font-size:clamp(38px,8vw,72px);letter-spacing:.08em;line-height:1.05;
+  background:linear-gradient(100deg,#c6fff5,#3ff5d0,#fff,#ffd66b,#c6fff5);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:adShimmer 2s linear infinite;filter:drop-shadow(0 0 14px rgba(63,245,208,.7)) drop-shadow(0 2px 0 rgba(0,40,40,.6))}
+.ad-wavecard .rw{font-family:var(--mono);font-size:17px;color:var(--gold);margin-top:6px;text-shadow:0 0 10px rgba(255,200,80,.6)}
+.ad-wavecard .rw small{font-family:'Fredoka',sans-serif;font-size:14px;color:#5dff9b;margin-left:10px}
+.ad-wavecard .burst{position:absolute;left:50%;top:50%;width:180px;height:180px;margin:-90px;border-radius:50%;border:3px solid rgba(63,245,208,.8);opacity:0}
+.ad-wavecard.on .burst{animation:adRing .9s ease-out}
+
 /* toasts / floating */
 .ad-toast{position:absolute;left:50%;bottom:192px;transform:translate(-50%,16px);opacity:0;padding:9px 18px 9px 14px;border-radius:999px!important;
   font-size:15px;color:var(--ink);white-space:nowrap;transition:opacity .45s,transform .55s cubic-bezier(.2,.8,.2,1);display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px)}
@@ -309,6 +342,7 @@ const CSS = `
   .ad-bossing .ad-banner{top:250px}}
 @media (max-width:640px){.ad-boss{top:118px}.ad-bossing .ad-banner{top:220px}.ad-boss .nm{font-size:13px}}
 @media (max-width:640px){
+  .ad-wwarn{top:auto;bottom:118px;font-size:14px}.ad-dodge{top:auto;bottom:150px}
   .ad-tl{left:10px;top:10px;padding:9px 12px 10px}
   .ad-tier{font-size:17px}.ad-next{display:none}
   .ad-tr{right:10px;top:10px;gap:6px}
@@ -369,6 +403,21 @@ export function createUI({ bus, camera, state }) {
   for (let i = 0; i < FLOATS; i++) floats.push({ el: el('div', 'ad-float', '', floatLayer), pos: new THREE.Vector3(), life: 0, dur: 1.1, active: false });
   let floatCursor = 0;
   const callout = el('div', 'ad-callout', 'CLOSE CALL!');
+
+  // ---------- formation-wave UI ----------
+  const waveLayer = el('div', '');
+  waveLayer.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+  const WCHEV = 8;
+  const wchev = [];
+  for (let i = 0; i < WCHEV; i++) {
+    const e = el('div', 'ad-wchev', '<div class="in"><i></i><i></i></div><div class="cd"><b></b></div>', waveLayer);
+    wchev.push({ el: e, cd: e.querySelector('.cd b'), on: false });
+  }
+  const wwarn = el('div', 'ad-wwarn', '<span></span><div class="bar"><b></b></div>');
+  const wwarnTxt = wwarn.querySelector('span'), wwarnBar = wwarn.querySelector('.bar b');
+  const dodge = el('div', 'ad-dodge', 'DODGE!');
+  const waveCard = el('div', 'ad-wavecard', '<div class="burst"></div><div class="eyebrow">Formation dodged</div><div class="big">WAVE CLEARED</div><div class="rw"></div>');
+  const waveRw = waveCard.querySelector('.rw');
 
   // ---------- HUD ----------
   const hud = el('div', 'ad-hud');
@@ -476,6 +525,7 @@ export function createUI({ bus, camera, state }) {
       <div class="ad-stat"><div class="lbl">Distance</div><div class="val" data-k="dist">0</div></div>
       <div class="ad-stat"><div class="lbl">Regions seen</div><div class="val" data-k="regions">1</div></div>
       <div class="ad-stat"><div class="lbl">Bosses slain</div><div class="val" data-k="bosses">0</div></div>
+      <div class="ad-stat"><div class="lbl">Waves cleared</div><div class="val" data-k="waves">0</div></div>
       <div class="ad-stat"><div class="lbl">Time</div><div class="val" data-k="time">0:00</div></div>
     </div>`;
   const nBosses = Object.keys(BOSSES).length;
@@ -487,6 +537,7 @@ export function createUI({ bus, camera, state }) {
     set('dist', `${fmtInt(state.distance || 0)}<small> m</small>`);
     set('regions', `${(state.biomesSeen || []).length}<small> / ${BIOMES.length}</small>`);
     set('bosses', `${(state.bossesDefeated || []).length}<small> / ${nBosses}</small>`);
+    set('waves', fmtInt(state.wavesCleared || 0));
     set('time', fmtTime(state.runTime));
     q(scr, '.ad-newbest').classList.toggle('on', state.score > 0 && state.score > runStartBest);
   };
@@ -661,6 +712,40 @@ export function createUI({ bus, camera, state }) {
     }, true);
   });
 
+  // formation waves
+  let waveId = null, waveDirs = [], waveT = 0, waveDur = 1.8, waveWarnOn = false, lastBonus = null, waveCardShown = false;
+  function hideWaveWarn() {
+    waveWarnOn = false; wwarn.classList.remove('on');
+    for (const c of wchev) if (c.on) { c.on = false; c.el.classList.remove('on'); }
+  }
+  bus.on('waveWarn', (p) => {
+    if (state.mode !== 'playing' || !p) return;
+    waveId = p.id; waveDirs = Array.isArray(p.dirs) ? p.dirs.slice(0, WCHEV) : [];
+    waveDur = Math.max(0.3, p.time || 1.8); waveT = 0; waveWarnOn = true;
+    wwarnTxt.textContent = `\u26A0 ${p.name || 'Formation'} incoming!`;
+    wwarnBar.style.transform = 'scaleX(1)';
+    restartAnim(wwarn, 'on');
+  });
+  bus.on('waveStart', (p) => {
+    if (state.mode !== 'playing') return;
+    if (!p || p.id === waveId || waveId == null) hideWaveWarn();
+    dodge.classList.remove('on'); void dodge.offsetWidth; dodge.classList.add('on');
+  });
+  bus.on('waveEnd', (p) => {
+    if (p && p.id === waveId) hideWaveWarn();
+    if (!p || !p.cleared || state.mode !== 'playing') return;
+    queueCard({
+      dur: 2.4,
+      show() { waveCardShown = true; waveRw.innerHTML = bonusHTML(lastBonus); restartAnim(waveCard, 'on'); banner.classList.remove('on'); },
+      hide() { waveCardShown = false; waveCard.classList.add('out'); lastBonus = null; },
+    });
+  });
+  const bonusHTML = (b) => (b ? `+${fmtInt(b.points || 0)} pts<small>\u25B2 +growth</small>` : '<small>\u25B2 +growth</small>');
+  bus.on('waveBonus', (b) => {
+    lastBonus = b || null;
+    if (waveCardShown) waveRw.innerHTML = bonusHTML(lastBonus);
+  });
+
   bus.on('restart', () => {
     runStartBest = state.best; shownScore = 0;
     lastBannerAt.clear(); hideBossBar(); clearCards();
@@ -756,6 +841,7 @@ export function createUI({ bus, camera, state }) {
     }
     if (mode !== 'playing') {
       for (const a of arrows) if (a.vis) { a.vis = false; a.el.style.opacity = '0'; }
+      hideWaveWarn(); dodge.classList.remove('on'); waveCard.classList.remove('on', 'out'); waveCardShown = false;
       if (lastDanger) { lastDanger = false; danger.classList.remove('on'); dangerTag.classList.remove('on'); }
       banner.classList.remove('on'); clearCards(); tierUp.classList.remove('on'); callout.classList.remove('on'); toast.classList.remove('on');
       bossCard.classList.remove('on'); root.classList.remove('ad-cine'); biteEl.classList.remove('on');
@@ -880,6 +966,28 @@ export function createUI({ bus, camera, state }) {
     ctx.restore();
   }
 
+  // wave warning chevrons at the screen edge (dirs are world XY, y up → screen y down)
+  function updateWaveChevrons(dt) {
+    waveT += dt;
+    const left = clamp01(1 - waveT / waveDur);
+    wwarnBar.style.transform = `scaleX(${left.toFixed(3)})`;
+    const cx = W / 2, cy = H / 2, m = W < 640 ? 30 : 42;
+    const pulse = (0.6 - 0.4 * (1 - left)).toFixed(2) + 's';
+    for (let i = 0; i < WCHEV; i++) {
+      const c = wchev[i], d = waveDirs[i];
+      if (!d || !Number.isFinite(d.x) || !Number.isFinite(d.y)) { if (c.on) { c.on = false; c.el.classList.remove('on'); } continue; }
+      const dx = d.x, dy = -d.y, len = Math.hypot(dx, dy) || 1;
+      const s = Math.min((cx - m) / Math.abs(dx || 1e-6), (cy - m) / Math.abs(dy || 1e-6));
+      const x = cx + dx * s, y = cy + dy * s;
+      // chevrons point inward (toward the player) along the incoming path
+      c.el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) rotate(${Math.atan2(-dy / len, -dx / len).toFixed(3)}rad)`;
+      c.el.style.setProperty('--wp', pulse);
+      c.cd.style.transform = `scaleX(${left.toFixed(3)})`;
+      if (!c.on) { c.on = true; c.el.classList.add('on'); }
+    }
+    if (waveT > waveDur + 1.5) hideWaveWarn(); // safety if waveStart never arrives
+  }
+
   // ---------- per-frame ----------
   function update(dt, st, player, eco, viewRadius, bosses) {
     st = st || state;
@@ -990,6 +1098,7 @@ export function createUI({ bus, camera, state }) {
       }
       updateArrows(player, eco, viewRadius, bossList);
       tickToasts(dt, st, player);
+      if (waveWarnOn) updateWaveChevrons(dt);
     }
 
     radarAcc += dt;

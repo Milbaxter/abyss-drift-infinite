@@ -106,7 +106,9 @@ export function createEcosystem({ scene, bus, terrain }) {
   const dangerT = [-99, -99, -99, -99]; let dangerI = 0;
   const noteDanger = () => { dangerT[dangerI] = runClock; dangerI = (dangerI + 1) & 3; };
 
-  const api = { fish, threat: 0, intensity: 0, phase: 'flow', danger: 0, statics: 0, food: 0, nearMisses: 0, reset, update };
+  let crossersPaused = false;
+  const api = { fish, threat: 0, intensity: 0, phase: 'flow', danger: 0, statics: 0, food: 0, nearMisses: 0, reset, update,
+    spawnLiner, pauseCrossers, clearStatics, breather: (sec) => { breatherT = Math.max(breatherT, sec || T.breather); }, pickSpecies: pickFormationSpecies };
 
   const breather = () => { breatherT = Math.max(breatherT, T.breather); };
   bus.on('evolve', breather);
@@ -126,6 +128,7 @@ export function createEcosystem({ scene, bus, terrain }) {
     schooled = 0; needFill = true;
     runClock = 0; crossCd = 0; staticCd = 0; rerollT = 0; dangerTarget = 3;
     breatherT = 0; bossActive = false; easyUntil = -1; lastDanger = 0; dangerT.fill(-99);
+    crossersPaused = false;
     Object.assign(api, { threat: 0, intensity: 0, phase: 'flow', danger: 0, statics: 0, food: 0, nearMisses: 0 });
   }
 
@@ -187,6 +190,7 @@ export function createEcosystem({ scene, bus, terrain }) {
     ai.cSepX = 0; ai.cSepY = 0; ai.cAliX = 0; ai.cAliY = 0; ai.cCohX = 0; ai.cCohY = 0; ai.cMates = 0;
     ai.cThrX = 0; ai.cThrY = 0; ai.cThreat = 1e9; ai.cPrey = null; ai.cPreyDist = 0; ai.cAlarm = 0; ai.cAlarmX = 0; ai.cAlarmY = 0;
     ai.speed = 0;
+    ai.formation = 0; ai.fixedSpeed = 0; ai.despawnMul = 1;
     refreshStats(f);
     f.invuln = 0;
     f.lastWallNx = 0; f.lastWallNy = 0;
@@ -435,7 +439,7 @@ export function createEcosystem({ scene, bus, terrain }) {
       let spd = 0, fleeing = false;
       if (mode === M_LINE) {
         // fixed heading, constant speed; only rare rocks deflect (and the line resumes after)
-        spd = ai.spd * ai.speedJitter;
+        spd = ai.fixedSpeed > 0 ? ai.fixedSpeed : ai.spd * ai.speedJitter;
         if (dangerToPlayer) spd = Math.min(spd, pSpeed * T.fairSpeed);
         let hd = ai.lineA;
         const s0 = ter.sdf(fx, fy);
@@ -576,7 +580,7 @@ export function createEcosystem({ scene, bus, terrain }) {
 
       // --- despawn ---
       const ddx = f.pos.x - cx, ddy = f.pos.y - cy;
-      if (ddx * ddx + ddy * ddy > despawnR2) f.alive = false;
+      if (ddx * ddx + ddy * ddy > despawnR2 * ai.despawnMul) f.alive = false;
     }
 
     for (let i = fish.length - 1; i >= 0; i--) {
@@ -617,6 +621,53 @@ export function createEcosystem({ scene, bus, terrain }) {
 
   function playerTurnCap(player) { return CONFIG.player.baseTurn / Math.pow(player.size, CONFIG.player.turnExp) * T.fairTurn; }
 
+  // ---------- formation API (used by formations.js) ----------
+  // A straight-line mover: fixed heading + fixed speed, no swerving except rare rocks. Sizes are NOT clamped to the
+  // species range (formation sizes stay relative to the player). opts: { waveId, edible, despawnMul }.
+  function spawnLiner(species, size, x, y, heading, speed, opts = {}) {
+    if (fish.length >= MAXF - 4 || !SPECIES[species]) return null;
+    const f = makeFish(species, size, x, y, heading);
+    initFish(f, M_LINE);
+    f.ai.formation = opts.waveId || 0;
+    f.ai.fixedSpeed = speed;
+    f.ai.despawnMul = opts.despawnMul || 1.6;
+    f.vel.set(Math.cos(heading) * speed, Math.sin(heading) * speed, 0);
+    fish.push(f);
+    return f;
+  }
+  function pauseCrossers(on) { crossersPaused = !!on; }
+  // Remove static hazards in the annulus [rMin, rMax] around (x,y) (call with rMin ≥ viewRadius: off-screen only).
+  function clearStatics(x, y, rMin, rMax) {
+    let c = 0;
+    for (let i = 0; i < fish.length; i++) {
+      const f = fish[i];
+      if (f.ai.mode !== M_STATIC || !f.alive) continue;
+      const d = Math.hypot(f.pos.x - x, f.pos.y - y);
+      if (d >= rMin && d <= rMax) { f.alive = false; c++; }
+    }
+    return c;
+  }
+  // Species for a formation squad around tier: predators/line-movers preferred, school shapes for small tiers.
+  function pickFormationSpecies(tier, size) {
+    const smallTier = tier <= 2;
+    let total = 0;
+    for (let i = 0; i < SPECIES_KEYS.length; i++) {
+      const key = SPECIES_KEYS[i], sp = SPECIES[key], tw = sp.tiers || {};
+      let w = (tw[tier] || 0) + 0.5 * (tw[tier + 1] || 0);
+      if (T.staticSpecies[key]) w = 0;
+      else if (sp.behavior === 'predator') w *= smallTier ? 1 : 4;
+      else if (sp.behavior === 'school') w *= smallTier ? 3 : 0.6;
+      else if (sp.behavior === 'giant') w *= size > 14 ? 1 : 0;
+      else w *= 0.3;
+      candW[i] = w; total += w;
+    }
+    if (total <= 0) return 'sardine';
+    let pick = Math.random() * total, k = 0;
+    for (; k < SPECIES_KEYS.length - 1; k++) { pick -= candW[k]; if (pick <= 0 && candW[k] > 0) break; }
+    while (candW[k] === 0 && k > 0) k--;
+    return SPECIES_KEYS[k];
+  }
+
   function director(dt, player, ps, tier, cx, cy, vr, danger, statics, baseA) {
     crossCd -= dt; staticCd -= dt; rerollT -= dt;
     let calls = 0;
@@ -630,7 +681,7 @@ export function createEcosystem({ scene, bus, terrain }) {
     let target = dangerTarget;
     if (easyUntil > runClock) target = Math.min(target, T.easyTarget[1]);
     if (breatherT > 0) target = Math.min(target, T.breatherTarget);
-    const hold = bossActive || runClock < T.safeStart;
+    const hold = bossActive || runClock < T.safeStart || crossersPaused;
     if (hold) target = 0;
     const calm = !hold && runClock - lastDanger > T.calmDanger;
     if (crossCd <= 0 && target > 0 && (danger < target || (calm && breatherT <= 0))) {

@@ -13,6 +13,7 @@ import { createEffects } from './effects.js';
 import { createUI } from './ui.js';
 import { createAudio } from './audio.js';
 import { createBosses } from './bosses.js';
+import { createFormations } from './formations.js';
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -41,6 +42,7 @@ const state = {
   biome: 0,
   biomesSeen: [0],        // region (biome) indices visited this run
   distance: 0,            // meters swum this run (path length)
+  wavesCleared: 0,        // formation waves dodged this run
   maxSize: 1,             // biggest size reached this run
   bossesDefeated: [],     // boss keys defeated this run
   boss: null,             // boss entity currently engaged (UI shows HP bar), or null
@@ -57,6 +59,7 @@ const player = createPlayer({ scene, camera, dom: canvas, bus, terrain });
 const camRig = createCameraRig({ camera, bus, terrain });
 const eco = createEcosystem({ scene, bus, terrain });
 const bosses = createBosses({ scene, bus, terrain });
+const formations = createFormations({ bus, eco, terrain });
 const fx = createEffects({ renderer, scene, camera, bus });
 const ui = createUI({ bus, camera, state, terrain });
 const audio = createAudio({ bus });
@@ -67,7 +70,8 @@ function startRun() {
   player.entity.form = TIERS[0].form;
   eco.reset();
   bosses.reset();
-  Object.assign(state, { mode: 'playing', paused: false, runTime: 0, score: 0, eaten: 0, tier: 0, biome: biomeIndexAt(player.entity.pos.x, player.entity.pos.y), biomesSeen: [biomeIndexAt(player.entity.pos.x, player.entity.pos.y)], distance: 0, maxSize: 1, mealValue: 1, bossesDefeated: [], boss: null, victoryShown: false, killer: null });
+  formations.reset();
+  Object.assign(state, { mode: 'playing', paused: false, runTime: 0, score: 0, eaten: 0, tier: 0, biome: biomeIndexAt(player.entity.pos.x, player.entity.pos.y), biomesSeen: [biomeIndexAt(player.entity.pos.x, player.entity.pos.y)], distance: 0, maxSize: 1, mealValue: 1, wavesCleared: 0, bossesDefeated: [], boss: null, victoryShown: false, killer: null });
   player.entity.invuln = CONFIG.player.invulnTime;
 }
 bus.on('start', () => { if (state.mode !== 'playing') startRun(); });
@@ -123,6 +127,17 @@ function winRun() {
 }
 
 // Bosses: bosses.js emits bossEngage/bossHit/bossDefeated. Main applies the reward.
+// Formation waves: a cleared wave (dodged without being eaten) pays out points + a small growth boost.
+bus.on('waveEnd', ({ cleared } = {}) => {
+  if (!cleared || state.mode !== 'playing') return;
+  const p = player.entity;
+  const gain = p.mass * 0.08;
+  p.mass += gain; p.size = sizeFromMass(p.mass); p.gulp = 1;
+  const points = Math.round(150 * (1 + state.tier) * (1 + state.wavesCleared * 0.15));
+  state.score += points; state.wavesCleared++;
+  bus.emit('waveBonus', { points, gain });
+  checkTier(p);
+});
 bus.on('bossEngage', ({ boss }) => { state.boss = boss; });
 bus.on('bossDisengage', () => { state.boss = null; });
 bus.on('bossDefeated', ({ boss }) => {
@@ -169,6 +184,7 @@ function frame() {
   player.update(dt, t, { active });
   eco.update(dt, t, p, { active: active && p.alive, viewRadius: camRig.viewRadius, bosses: bosses.list });
   bosses.update(dt, t, p, { active: active && p.alive, viewRadius: camRig.viewRadius });
+  formations.update(dt, t, p, state, camRig.viewRadius);
 
   if (active) {
     const b = biomeIndexAt(p.pos.x, p.pos.y);
@@ -206,7 +222,7 @@ function frame() {
 frame();
 
 // Debug handle for console / playtesting.
-window.__abyss = { THREE, scene, camera, renderer, state, player, eco, bosses, terrain, bus, world, fx, fishRenderer, camRig, ui, audio };
+window.__abyss = { formations, THREE, scene, camera, renderer, state, player, eco, bosses, terrain, bus, world, fx, fishRenderer, camRig, ui, audio };
 
 function safeGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
 function safeSet(k, v) { try { localStorage.setItem(k, String(v)); } catch {} }
